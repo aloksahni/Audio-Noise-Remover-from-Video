@@ -1,5 +1,10 @@
+# Web front-end (app.py)
+flask>=3.0
+# Desktop GUIs (audio_noise_remover.py / _gui.py)
+customtkinter
 moviepy==1.0.3
+playsound==1.2.2
+# Core processing (all versions)
 scipy>=1.10
 noisereduce>=3.0
-playsound==1.2.2
 numpy>=1.24

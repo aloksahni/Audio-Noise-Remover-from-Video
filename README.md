@@ -1,93 +1,61 @@
 # Audio Noise Remover from Video 🎬🔊
 
-A Python desktop application that **extracts the audio from a video, removes background noise, and re-embeds the cleaned audio back into the video** — all with one click, fully offline.
+A Python project that **extracts the audio from a video, removes background noise, and re-embeds the cleaned audio back into the video** — fully offline.
 
 > Developed by **Alok Sahni** as the project for the **NIELIT 'O' Level Examination**, under the guidance of **Mr. Tarun Verma** (C Institute, Bikaner, Rajasthan).
 
----
+The project is available in **three versions**, all sharing the same processing pipeline:
 
-## ✨ Features
+| Version | File | Interface |
+| --- | --- | --- |
+| 1. Desktop (original) | `audio_noise_remover.py` | Classic Tkinter window — as submitted in the project report |
+| 2. Desktop (modern) | `audio_noise_remover_gui.py` | CustomTkinter dark UI with 3-step flow, slider, threading |
+| 3. Web app | `app.py` + `templates/index.html` | Browser UI with drag-drop, waveform comparison, chunked processing for long videos |
 
-- Simple **Tkinter GUI** — no command line or DSP knowledge required
-- Supports **.mp4** and **.mkv** input files
-- **Spectral-gating noise reduction** using the `noisereduce` library
-- **Preview original vs cleaned audio** directly inside the app
-- Output is a **complete playable video** (`<name>_cleaned.mp4`), not just an audio file
-- Video stream is **copied without re-encoding** (fast, no quality loss)
-- 100% **local processing** — no uploads, no privacy concerns
+![Modern GUI preview](gui_preview.png)
 
 ## 🖥️ How It Works
 
 ```
-Select video ──► MoviePy extracts audio (WAV)
+Select video ──► FFmpeg/MoviePy extracts audio (WAV)
              ──► SciPy reads WAV, stereo → mono
-             ──► First 5000 samples taken as noise profile
+             ──► First seconds taken as noise profile
              ──► noisereduce removes noise (spectral gating)
              ──► Cleaned 16-bit WAV saved
              ──► FFmpeg merges cleaned audio + original video
              ──► Output: <name>_cleaned.mp4
 ```
 
-## 🛠️ Tech Stack
-
-| Tool / Library | Purpose |
-| --- | --- |
-| Python 3.x | Programming language |
-| Tkinter | GUI interface |
-| MoviePy | Extracting audio from video |
-| scipy.io.wavfile | Reading/writing WAV audio |
-| noisereduce | Noise reduction |
-| playsound | Audio preview |
-| FFmpeg | Re-merging audio into video |
-
 ## 📋 Requirements
 
-- Windows 10 or above
-- Python 3.7+
-- [FFmpeg](https://ffmpeg.org/download.html) installed at `C:\ffmpeg\bin\ffmpeg.exe` (or edit `ffmpeg_path` in the code)
+- Python 3.7+ · [FFmpeg](https://ffmpeg.org/download.html) installed (auto-detected on PATH, or `C:\ffmpeg\bin\ffmpeg.exe`)
+- `pip install -r requirements.txt`
 
-## 🚀 Installation & Usage
+## 🚀 Usage
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/<your-username>/Audio-Noise-Remover.git
-cd Audio-Noise-Remover
+**Desktop (original):** `python audio_noise_remover.py`
 
-# 2. Install dependencies
-pip install -r requirements.txt
+**Desktop (modern UI):** `python audio_noise_remover_gui.py`
 
-# 3. Run the application
-python audio_noise_remover.py
-```
+**Web app:** `python app.py` — your browser opens http://127.0.0.1:5000 automatically. Drop a video, click *Clean audio*, compare the amber (noisy) and teal (cleaned) waveforms, download the result. Long videos are processed in 30-second chunks so memory stays low.
 
-Then in the app: **Browse** → select a video → **Clean Audio** → the cleaned video is saved next to the original as `<name>_cleaned.mp4`.
+**Jupyter/Colab:** open `Audio_Noise_Remover_Project_Alok_Sahni.ipynb` — includes a notebook-friendly pipeline with audio players and waveform plots.
 
 ## 📄 Documentation
 
-- [Project Report (PDF)](docs/Project_Report.pdf) — full NIELIT 'O' Level project report
-- [Project Presentation (PPTX)](docs/Project_Presentation.pptx) — 21-slide presentation
+- [Project Report (PDF)](Major_Project_Report_Audio_Noise_Remover_Alok_Sahni.pdf) — full NIELIT 'O' Level project report
+- [Project Presentation (PPTX)](Audio_Noise_Remover_Presentation_REAL.pptx) — 21-slide presentation
 
 ## ⚠️ Known Limitations
 
-- Noise profile is always taken from the **first 5000 samples** (assumes the recording starts with noise only)
-- FFmpeg path is **hard-coded for Windows**
-- Processing is synchronous — the GUI may freeze on long videos
-- No formal quality metrics (SNR); verification is by listening comparison
-
-## 🔮 Future Scope
-
-- User-selectable noise sample region
-- Automatic cross-platform FFmpeg detection
-- Background threading for a responsive GUI
-- Batch processing of multiple videos
-- Before/after waveform visualisation
+- Noise profile is taken from the start of the recording (assumes it begins with noise only)
+- Quality verified by listening comparison; no formal SNR metrics yet
 
 ## 👤 Author
 
-**Alok Sahni**
-NIELIT 'O' Level Candidate — C Institute, Bikaner, Rajasthan
+**Alok Sahni** — NIELIT 'O' Level Candidate, C Institute, Bikaner, Rajasthan
 Guide: Mr. Tarun Verma (A Level NIELIT, M.Sc. Computer Science, MGSU Bikaner)
 
 ## 📜 License
 
-This project is licensed under the [MIT License](LICENSE).
+[MIT License](LICENSE)

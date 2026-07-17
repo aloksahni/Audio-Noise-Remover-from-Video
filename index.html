@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audio Noise Remover — Alok Sahni</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#10182b;          /* deep console slate */
+    --panel:#18233c;
+    --panel-2:#1d2a47;
+    --line:#2a3a5e;
+    --ink:#e8edf7;
+    --dim:#8fa0c2;
+    --noisy:#f0a63c;       /* amber = noisy signal */
+    --clean:#3fd6c0;       /* teal  = cleaned signal */
+    --danger:#ff7a7a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:
+      linear-gradient(transparent 39px, rgba(255,255,255,.025) 40px) 0 0/100% 40px,
+      linear-gradient(90deg, transparent 39px, rgba(255,255,255,.02) 40px) 0 0/40px 100%,
+      var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;
+    padding:40px 16px 60px;
+  }
+  h1,h2,.step-name,button{font-family:"Space Grotesk",system-ui,sans-serif}
+
+  header{max-width:860px;width:100%;margin-bottom:26px}
+  .kicker{color:var(--dim);letter-spacing:.14em;font-size:.72rem;text-transform:uppercase}
+  h1{font-size:clamp(1.6rem,4vw,2.3rem);font-weight:700;margin:.25rem 0 .4rem}
+  h1 .n{color:var(--noisy)} h1 .c{color:var(--clean)}
+  .sub{color:var(--dim);font-size:.95rem;max-width:60ch}
+
+  .card{
+    max-width:860px;width:100%;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:26px;
+    margin-bottom:18px;
+  }
+
+  /* drop zone */
+  .drop{
+    border:2px dashed var(--line);
+    border-radius:12px;
+    padding:34px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .2s, background .2s;
+  }
+  .drop.drag{border-color:var(--clean);background:var(--panel-2)}
+  .drop strong{display:block;font-size:1.05rem;margin-bottom:4px}
+  .drop span{color:var(--dim);font-size:.85rem}
+  .drop .file{color:var(--clean);font-size:.9rem;margin-top:10px;word-break:break-all}
+
+  .controls{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin-top:20px}
+  label{color:var(--dim);font-size:.88rem}
+  input[type=number]{
+    width:72px;background:var(--panel-2);color:var(--ink);
+    border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.95rem;
+  }
+  button{
+    background:var(--clean);color:#06251f;border:none;border-radius:9px;
+    padding:12px 26px;font-size:1rem;font-weight:700;cursor:pointer;
+  }
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button:focus-visible,.drop:focus-visible{outline:3px solid var(--clean);outline-offset:2px}
+
+  /* pipeline steps */
+  .steps{display:flex;gap:6px;margin-top:22px}
+  .step{flex:1;min-width:0}
+  .step .bar{height:5px;border-radius:3px;background:var(--line);transition:background .3s}
+  .step.on .bar{background:var(--clean)}
+  .step.run .bar{background:var(--noisy);animation:pulse 1s infinite alternate}
+  @keyframes pulse{from{opacity:.5}to{opacity:1}}
+  .step-name{font-size:.62rem;color:var(--dim);margin-top:5px;letter-spacing:.04em;
+             white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .status{margin-top:14px;font-size:.9rem;color:var(--dim);min-height:1.3em}
+  .status.err{color:var(--danger)}
+
+  /* results */
+  #results{display:none}
+  .track{margin-bottom:22px}
+  .track h2{font-size:.95rem;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
+  .track.noisy h2{color:var(--noisy)} .track.clean h2{color:var(--clean)}
+  canvas{width:100%;height:96px;display:block;background:var(--panel-2);
+         border:1px solid var(--line);border-radius:10px}
+  audio{width:100%;margin-top:10px}
+  .dl{display:inline-block;margin-top:6px;background:var(--clean);color:#06251f;
+      text-decoration:none;font-weight:700;border-radius:9px;padding:12px 26px;
+      font-family:"Space Grotesk",sans-serif}
+
+  footer{color:var(--dim);font-size:.75rem;margin-top:26px;text-align:center}
+  @media (prefers-reduced-motion: reduce){ .step.run .bar{animation:none} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">NIELIT 'O' Level Project · C Institute, Bikaner</div>
+  <h1>Audio Noise Remover <span class="n">from</span> <span class="c">Video</span></h1>
+  <p class="sub">Upload a video — the noisy audio track is extracted, cleaned by
+     spectral gating, and merged back into your video. Everything runs locally
+     on this machine.</p>
+</header>
+
+<div class="card">
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a video file">
+    <strong>Drop a video here, or click to browse</strong>
+    <span>.mp4 or .mkv · processed locally, nothing is uploaded to the internet</span>
+    <div class="file" id="fileName"></div>
+  </div>
+  <input type="file" id="fileInput" accept=".mp4,.mkv" hidden>
+
+  <div class="controls">
+    <label>Noise profile: first
+      <input type="number" id="noiseSecs" value="0.5" min="0.1" max="5" step="0.1">
+      seconds of the recording
+    </label>
+    <button id="cleanBtn" disabled>Clean audio</button>
+  </div>
+
+  <div class="steps" id="steps">
+    <div class="step"><div class="bar"></div><div class="step-name">Extract audio</div></div>
+    <div class="step"><div class="bar"></div><div class="step-name">Stereo → mono</div></div>
+    <div class="step"><div class="bar"></div><div class="step-name">Reduce noise</div></div>
+    <div class="step"><div class="bar"></div><div class="step-name">Save WAV</div></div>
+    <div class="step"><div class="bar"></div><div class="step-name">Merge video</div></div>
+  </div>
+  <div class="status" id="status">{% if not ffmpeg_ok %}FFmpeg was not found on this system — install it from ffmpeg.org before cleaning.{% endif %}</div>
+</div>
+
+<div class="card" id="results">
+  <div class="track noisy">
+    <h2>Original — noisy</h2>
+    <canvas id="waveOrig" height="96"></canvas>
+    <audio id="audioOrig" controls preload="metadata"></audio>
+  </div>
+  <div class="track clean">
+    <h2>Cleaned — noise reduced</h2>
+    <canvas id="waveClean" height="96"></canvas>
+    <audio id="audioClean" controls preload="metadata"></audio>
+  </div>
+  <a class="dl" id="download" download>Download cleaned video</a>
+</div>
+
+<footer>Developed by Alok Sahni · Guide: Mr. Tarun Verma · Tools: Python, Flask, MoviePy, SciPy, noisereduce, FFmpeg</footer>
+
+<script>
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('fileInput');
+const fileName = document.getElementById('fileName');
+const cleanBtn = document.getElementById('cleanBtn');
+const statusEl = document.getElementById('status');
+const steps = [...document.querySelectorAll('.step')];
+const results = document.getElementById('results');
+let file = null;
+
+function setFile(f){
+  if(!f) return;
+  const ext = f.name.toLowerCase().slice(f.name.lastIndexOf('.'));
+  if(ext !== '.mp4' && ext !== '.mkv'){
+    statusEl.textContent = 'Only .mp4 and .mkv files are supported.';
+    statusEl.classList.add('err'); return;
+  }
+  file = f;
+  fileName.textContent = f.name + ' (' + (f.size/1048576).toFixed(1) + ' MB)';
+  statusEl.textContent = 'Ready to clean.';
+  statusEl.classList.remove('err');
+  cleanBtn.disabled = false;
+}
+
+drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' ') fileInput.click(); });
+fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.add('drag');
+}));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.remove('drag');
+}));
+drop.addEventListener('drop', e => setFile(e.dataTransfer.files[0]));
+
+function setSteps(activeCount, running){
+  steps.forEach((s,i) => {
+    s.classList.toggle('on', i < activeCount);
+    s.classList.toggle('run', running && i === activeCount);
+  });
+}
+
+async function drawWave(url, canvas, color){
+  try{
+    const ctx2 = new (window.AudioContext||window.webkitAudioContext)();
+    const buf = await (await fetch(url)).arrayBuffer();
+    const audio = await ctx2.decodeAudioData(buf);
+    const data = audio.getChannelData(0);
+    const c = canvas.getContext('2d');
+    const W = canvas.width = canvas.offsetWidth * devicePixelRatio;
+    const H = canvas.height = 96 * devicePixelRatio;
+    c.clearRect(0,0,W,H);
+    c.fillStyle = color;
+    const cols = Math.floor(W / (3*devicePixelRatio));
+    const chunk = Math.floor(data.length / cols);
+    for(let i=0;i<cols;i++){
+      let peak = 0;
+      const start = i*chunk;
+      for(let j=start;j<start+chunk;j+=16){
+        const v = Math.abs(data[j]); if(v>peak) peak=v;
+      }
+      const h = Math.max(2*devicePixelRatio, peak * H * 0.92);
+      c.fillRect(i*3*devicePixelRatio, (H-h)/2, 2*devicePixelRatio, h);
+    }
+    ctx2.close();
+  }catch(e){ /* waveform is a bonus; players still work */ }
+}
+
+cleanBtn.addEventListener('click', async () => {
+  if(!file) return;
+  cleanBtn.disabled = true;
+  results.style.display = 'none';
+  statusEl.classList.remove('err');
+
+  // The server processes in one request; animate steps on a schedule
+  // proportional to the real pipeline order while we wait.
+  let step = 0;
+  setSteps(0, true);
+  statusEl.textContent = 'Uploading and extracting audio…';
+  const labels = ['Extracting audio…','Converting to mono…',
+                  'Reducing noise (this is the longest step)…',
+                  'Saving cleaned audio…','Merging audio into video…'];
+  const ticker = setInterval(() => {
+    if(step < 4){ step++; setSteps(step, true); statusEl.textContent = labels[step]; }
+  }, 2500);
+
+  const fd = new FormData();
+  fd.append('video', file);
+  fd.append('noise_secs', document.getElementById('noiseSecs').value);
+
+  try{
+    const r = await fetch('/process', {method:'POST', body:fd});
+    const j = await r.json();
+    clearInterval(ticker);
+    if(!r.ok){ throw new Error(j.error || 'Processing failed.'); }
+
+    setSteps(5, false);
+    statusEl.textContent = 'Done — compare the two tracks below.';
+    document.getElementById('audioOrig').src = j.original_audio;
+    document.getElementById('audioClean').src = j.cleaned_audio;
+    const dl = document.getElementById('download');
+    dl.href = j.cleaned_video; dl.setAttribute('download', j.video_name);
+    results.style.display = 'block';
+    drawWave(j.original_audio, document.getElementById('waveOrig'),
+             getComputedStyle(document.documentElement).getPropertyValue('--noisy'));
+    drawWave(j.cleaned_audio, document.getElementById('waveClean'),
+             getComputedStyle(document.documentElement).getPropertyValue('--clean'));
+  }catch(err){
+    clearInterval(ticker);
+    setSteps(0, false);
+    statusEl.textContent = err.message;
+    statusEl.classList.add('err');
+  }finally{
+    cleanBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

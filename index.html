@@ -135,7 +135,7 @@
     <div class="step"><div class="bar"></div><div class="step-name">Save WAV</div></div>
     <div class="step"><div class="bar"></div><div class="step-name">Merge video</div></div>
   </div>
-  <div class="status" id="status">{% if not ffmpeg_ok %}FFmpeg was not found on this system — install it from ffmpeg.org before cleaning.{% endif %}</div>
+  <div class="status" id="status"></div>
 </div>
 
 <div class="card" id="results">
@@ -163,6 +163,27 @@ const statusEl = document.getElementById('status');
 const steps = [...document.querySelectorAll('.step')];
 const results = document.getElementById('results');
 let file = null;
+
+// ---- startup check: are we actually connected to the server? ----
+(async () => {
+  if (location.protocol === 'file:') {
+    statusEl.textContent = 'This page was opened as a file. Start the server with "python app.py" — it will open the correct address (http://127.0.0.1:5000) automatically.';
+    statusEl.classList.add('err');
+    cleanBtn.disabled = true;
+    return;
+  }
+  try {
+    const r = await fetch('/health');
+    const j = await r.json();
+    if (!j.ffmpeg) {
+      statusEl.textContent = 'FFmpeg was not found on this system — install it from ffmpeg.org before cleaning.';
+      statusEl.classList.add('err');
+    }
+  } catch (e) {
+    statusEl.textContent = 'Cannot reach the server. Start it with "python app.py" and open http://127.0.0.1:5000';
+    statusEl.classList.add('err');
+  }
+})();
 
 function setFile(f){
   if(!f) return;
@@ -264,7 +285,9 @@ cleanBtn.addEventListener('click', async () => {
   }catch(err){
     clearInterval(ticker);
     setSteps(0, false);
-    statusEl.textContent = err.message;
+    statusEl.textContent = (err.message === 'Failed to fetch')
+      ? 'Lost contact with the server — check the terminal running "python app.py" for a red error, then make sure you opened http://127.0.0.1:5000 (not the HTML file directly).'
+      : err.message;
     statusEl.classList.add('err');
   }finally{
     cleanBtn.disabled = false;

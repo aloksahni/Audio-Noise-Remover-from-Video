@@ -1,16 +1,11 @@
-# Python
 __pycache__/
 *.pyc
-*.pyo
 .venv/
 venv/
-
-# Temp / output media
+jobs/*
+!jobs/.gitkeep
 *.wav
 *_cleaned.mp4
-*.tmp
-
-# OS / editor
 .DS_Store
 Thumbs.db
 .idea/
